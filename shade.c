@@ -1,15 +1,78 @@
 /* Read /usr/lib/include/stub.c to know how to interface with prolog */
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <netdb.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <netinet/ip.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <SWI-Prolog.h>
+
+
+//IRC file descriptor
+int irc_fd;
+
+static void debug(const char *error)
+{
+	fprintf(stderr, "%s\n", error);
+}
+
+static int irc_connect(const char *hostname, int port)
+{
+    struct sockaddr_in dest = {};
+
+	printf("Connecting to %s:%d\n", hostname, port);
+
+	if((irc_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+		debug("Error creating socket");
+		return 0;
+    }
+
+    dest.sin_family = AF_INET;
+    dest.sin_port = htons(port);
+
+	if(inet_aton(hostname, &dest.sin_addr.s_addr) == 0)
+	{
+		debug("Error resolving hostname");
+		return 0;
+	}
+	
+	if(connect(irc_fd, (struct sockaddr*)&dest, sizeof(dest)) != 0)
+	{
+		debug("Error connecting to server");
+		return 0;
+	}
+	return 1;
+}
+
+int irc_send_raw(const char *msg)
+{
+	int len = strlen(msg);
+	if( send( irc_fd, msg, len, 0) == len)
+	{
+		return 1;
+	}
+	return 0;
+}
+
+void irc_disconnect()
+{
+    close(irc_fd);
+}
+
 
 static foreign_t pl_irc_connect(term_t a0)
 {
 	char *server;
-	printf("%d\n", PL_term_type(a0) );
 	if(PL_get_atom_chars(a0, &server))
 	{
-		printf("Connect: \n", server);
-		PL_succeed;
+		//TODO suporta para: "irc.freenode.net:port"
+		if(irc_connect(server, 6667))
+			PL_succeed;
 	}
 	PL_fail;
 } 
