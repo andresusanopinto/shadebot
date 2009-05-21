@@ -84,7 +84,7 @@ static foreign_t pl_irc_connect(term_t a0)
 	if(PL_get_atom_chars(a0, &server))
 	{
 		//TODO suporta para: "irc.freenode.net:port"
-		puts(server);
+
 		if(irc_connect(server, "6667"))
 			PL_succeed;
 	}
@@ -97,7 +97,7 @@ static foreign_t pl_irc_raw_send(term_t a0)
 	int str_len;
 	if(PL_get_atom_chars(a0, &str))
 	{
-		puts(str);
+		irc_raw_send(str);
 		PL_succeed;
 	}
 	PL_fail;
@@ -164,8 +164,8 @@ int main(int argc, char **argv)
 	//if(irc_connect("irc.freenode.net", "6667"))
 	if(call_pl_start())
 	{
-		irc_raw_send("NICK shade_bot");
-		irc_raw_send("USER shade_bot shade_bot shade_bot shade_bot");
+/*		irc_raw_send("NICK shade_bot");
+		irc_raw_send("USER shade_bot shade_bot shade_bot shade_bot");*/
 		irc_read_msg();
 	}
 
