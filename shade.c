@@ -1,4 +1,4 @@
-/* Read /usr/lib/include/stub.c to know how to interface with prolog */
+/* Read /usr/lib/swi-prolog/include/* to know how to interface with prolog */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -44,6 +44,8 @@ static int irc_connect(const char *hostname, const char * port)
 		debug( "Couldn't connect" );
 		return 0;
 	}
+	
+	printf("Connection suceeded to %s:%s\n", hostname, port);
 	return 1;
 }
 
@@ -82,6 +84,7 @@ static foreign_t pl_irc_connect(term_t a0)
 	if(PL_get_atom_chars(a0, &server))
 	{
 		//TODO suporta para: "irc.freenode.net:port"
+		puts(server);
 		if(irc_connect(server, "6667"))
 			PL_succeed;
 	}
@@ -124,6 +127,13 @@ int pl_include_file(const char *file)
 	return !PL_call_predicate(NULL, TRUE, pred, h0);
 }
 
+int call_pl_start()
+{
+	term_t h0 = PL_new_term_refs(1);
+	PL_put_atom_chars(h0, "irc_start");
+	return PL_call(h0, NULL);
+}
+
 void irc_read_msg()
 {
 	char buf[1024], *pos = buf, tmp;
@@ -151,7 +161,8 @@ int main(int argc, char **argv)
 	if(!PL_initialise(argc, argv))
 		PL_halt(1);
 
-	if(irc_connect("irc.freenode.net", "6667"))
+	//if(irc_connect("irc.freenode.net", "6667"))
+	if(call_pl_start())
 	{
 		irc_raw_send("NICK shade_bot");
 		irc_raw_send("USER shade_bot shade_bot shade_bot shade_bot");
