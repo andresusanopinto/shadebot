@@ -1,4 +1,4 @@
-/* Read /usr/lib/swi-prolog/include/* to know how to interface with prolog */
+/* Read /usr/lib/swi-prolog/manual/index.html to know how to interface with prolog */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
