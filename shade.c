@@ -49,6 +49,28 @@ static int irc_connect(const char *hostname, const char * port)
 	return 1;
 }
 
+
+void irc_read_msg()
+{
+	char buf[1024], *pos = buf, tmp;
+	while(irc_fd != -1 && read(irc_fd, &tmp, 1) == 1)
+	{
+		if(tmp == '\n')
+		{
+			*pos = 0;
+			printf("Receive: %s\n", buf);
+			call_pl_irc_raw_receive(buf);
+			pos = buf;
+		}
+		else
+		{
+			*(pos++) = tmp;
+			if(pos == buf+512)
+				printf("Receiving msg too long\n");
+		}
+	}
+}
+
 /*
  * Sends a msg (it adds a newline after the string)
  */
@@ -75,6 +97,7 @@ void irc_receive_msg(const char *msg)
 void irc_disconnect()
 {
     close(irc_fd);
+    irc_fd = -1;
 }
 
 
@@ -89,6 +112,11 @@ static foreign_t pl_irc_connect(term_t a0)
 			PL_succeed;
 	}
 	PL_fail;
+} 
+static foreign_t pl_irc_disconnect()
+{
+	irc_disconnect();
+	PL_succeed;
 } 
 
 static foreign_t pl_irc_raw_send(term_t a0)
@@ -107,6 +135,7 @@ static const PL_extension predicates[] =
 {
 /*{ "name",	arity,  function,	PL_FA_<flags> },*/
  	{ "irc_connect",  1, pl_irc_connect,  0 },
+ 	{ "irc_disconnect",  0, pl_irc_disconnect,  0 },
  	{ "irc_raw_send", 1, pl_irc_raw_send, 0 },
 	{ NULL,	0, 	NULL,		0 }
 };
@@ -134,26 +163,6 @@ int call_pl_start()
 	return PL_call(h0, NULL);
 }
 
-void irc_read_msg()
-{
-	char buf[1024], *pos = buf, tmp;
-	while(read(irc_fd, &tmp, 1) == 1)
-	{
-		if(tmp == '\n')
-		{
-			*pos = 0;
-			printf("Receive: %s\n", buf);
-			call_pl_irc_raw_receive(buf);
-			pos = buf;
-		}
-		else
-		{
-			*(pos++) = tmp;
-			if(pos == buf+512)
-				printf("Receiving msg too long\n");
-		}
-	}
-}
 
 int main(int argc, char **argv)
 {
@@ -161,15 +170,8 @@ int main(int argc, char **argv)
 	if(!PL_initialise(argc, argv))
 		PL_halt(1);
 
-	//if(irc_connect("irc.freenode.net", "6667"))
 	if(call_pl_start())
-	{
-/*		irc_raw_send("NICK shade_bot");
-		irc_raw_send("USER shade_bot shade_bot shade_bot shade_bot");*/
 		irc_read_msg();
-	}
-
-//	PL_halt( pl_include_file("config/main.pl") );
 
 	return 0;
 }
