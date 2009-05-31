@@ -5,10 +5,11 @@
 #include <netdb.h>
 #include <SWI-Prolog.h>
 
-
 //IRC file descriptor
 static int irc_fd = -1;
 
+
+//Funcoes base implementadas em C
 static void debug(const char *error)
 {
 	fprintf(stderr, "%s\n", error);
@@ -23,7 +24,7 @@ static int irc_connect(const char *hostname, const char * port)
 	s = getaddrinfo( hostname, port, &hints, &result);
 	if(s != 0)
 	{
-		printf("Connecting to %s:%d - %s\n", hostname, port, gai_strerror(s));
+		printf("Connecting to %s:%s - %s\n", hostname, port, gai_strerror(s));
 		return 0;
 	}
 
@@ -49,7 +50,6 @@ static int irc_connect(const char *hostname, const char * port)
 	return 1;
 }
 
-
 void irc_read_msg()
 {
 	char buf[1024], *pos = buf, tmp;
@@ -58,7 +58,7 @@ void irc_read_msg()
 		if(tmp == '\n')
 		{
 			*pos = 0;
-			printf("Receive: %s\n", buf);
+			//printf("Receive: %s\n", buf);
 			call_pl_irc_raw_receive(buf);
 			pos = buf;
 		}
@@ -71,9 +71,8 @@ void irc_read_msg()
 	}
 }
 
-/*
- * Sends a msg (it adds a newline after the string)
- */
+
+//Sends a msg (it adds a newline after the string)
 int irc_raw_send(const char *msg)
 {	
 	const static char newline = '\n';
@@ -93,7 +92,6 @@ void irc_receive_msg(const char *msg)
 	printf("received msg: %s\n", msg);
 }
 
-
 void irc_disconnect()
 {
     close(irc_fd);
@@ -101,18 +99,18 @@ void irc_disconnect()
 }
 
 
+//Funcoes chamadas pelo PROLOG
 static foreign_t pl_irc_connect(term_t a0)
 {
 	char *server;
 	if(PL_get_atom_chars(a0, &server))
 	{
-		//TODO suporta para: "irc.freenode.net:port"
-
 		if(irc_connect(server, "6667"))
 			PL_succeed;
 	}
 	PL_fail;
-} 
+}
+
 static foreign_t pl_irc_disconnect()
 {
 	irc_disconnect();
@@ -140,6 +138,8 @@ static const PL_extension predicates[] =
 	{ NULL,	0, 	NULL,		0 }
 };
 
+
+//Chamadas as funcoes do PROLOG
 int call_pl_irc_raw_receive(const char *msg)
 {
 	predicate_t pred = PL_predicate("irc_raw_receive", 1, "user");
@@ -164,6 +164,7 @@ int call_pl_start()
 }
 
 
+//Funcao inicial
 int main(int argc, char **argv)
 {
 	PL_register_extensions(predicates);
@@ -175,5 +176,4 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
 
