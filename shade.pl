@@ -83,16 +83,21 @@ irc_receive( [Prefix, 'PRIVMSG', _Channel | [Cmd | Params] ] ):-
 	.
 
 irc_receive( [_Prefix, 'PRIVMSG', Channel |  Msg ] ):-
+	write('Msg: '), write(Msg),nl,
 	is_channel( Channel ),!,
 	clean_msg(Msg, CMsg),	
+	write('CMsg: '), write(CMsg),nl,
 	irc_response(CMsg, Response),
+	write('Resposta Canal'),write(Response),nl,
 	irc_privmsg(Channel, Response)
 	.
 
 irc_receive( [Prefix, 'PRIVMSG', _Channel |  Msg ] ):-
 	prefix(Prefix, Sender),
 	clean_msg(Msg, CMsg),
+	write('CMsg: '), write(CMsg),nl,
 	irc_response(CMsg, Response),
+	write('Resposta Privada'),write(Response),nl,
 	irc_privmsg(Sender, Response)
 	.
 
@@ -103,9 +108,15 @@ irc_receive(_):- write('Unknown message'),nl.
  */
 is_admin('apinto').
 is_admin('jaguarandi').
-bot_control(['quit']):-!,write('quitting'),nl,irc_disconnect.
+bot_control(['quit']):-!,write('quitting'),nl,irc_send(['QUIT :I am seeing the WHITE ROOMS 8D']),irc_disconnect.
 bot_control(['nick', Nick]):-!,irc_nick(Nick).
 bot_control(['nick', Nick, Pass]):-!,nick_auth(Nick, Pass).
+bot_control(['join', Channel]):-!,irc_send(['JOIN',Channel]).
+bot_control(['join', Channel, Pass]):-!,irc_send(['JOIN',Channel,Pass]).
+bot_control(['part', Channel]):-!,irc_send(['PART',Channel,':end of BODY LANGUAGE here :P']).
+bot_control(['invite', Nick, Channel]):-!,irc_send(['INVITE',Nick,Channel]).
+bot_control(['kick', Nick, Channel | []]):-!,irc_send(['KICK',Channel,Nick,':DARKO kicks your ass like no other']).
+bot_control(['kick', Nick, Channel | Msg]):-!,clean_msg(NMsg, Msg),append(['KICK',Channel,Nick], NMsg, Final),!,irc_send(Final).
 bot_control(L):-write('Comando invalido: |'),write(L),write('|'),nl.
 
 
