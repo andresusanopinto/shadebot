@@ -17,7 +17,7 @@ irc_start:-
 irc_auth:-
 	Nick = 'shade_bot',
 	irc_send(['USER', Nick, Nick, Nick, Nick]),
-	irc_login(Nick, 'pass').
+	irc_login(Nick, 'booka').
 
 irc_send(L):-
 	concat_atom(L,' ',S),
