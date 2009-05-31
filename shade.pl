@@ -78,7 +78,7 @@ irc_receive( ['PING', Id] ):- irc_send(['PONG', Id]).
 irc_receive( [Prefix, 'PRIVMSG', _Channel | [Cmd | Params] ] ):-
 	prefix(Prefix, Sender),
 	is_admin(Sender),
-	concat_atom(['!',Command],Cmd),!,
+	concat_atom([':!',Command],Cmd),!,
 	bot_control([Command | Params])
 	.
 
