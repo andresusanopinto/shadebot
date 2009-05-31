@@ -58,6 +58,7 @@ void irc_read_msg()
 		if(tmp == '\n')
 		{
 			*pos = 0;
+			if(pos-1 >= buf && pos[-1] == '\r') pos[-1] = 0;
 			//printf("Receive: %s\n", buf);
 			call_pl_irc_raw_receive(buf);
 			pos = buf;
@@ -76,7 +77,7 @@ void irc_read_msg()
 int irc_raw_send(const char *msg)
 {	
 	const static char newline = '\n';
-	printf("sending msg: %s\n", msg);
+	printf("<== %s\n", msg);
 
 	int len = strlen(msg);
 	if(write(irc_fd, msg, len) == len
@@ -89,7 +90,7 @@ int irc_raw_send(const char *msg)
 
 void irc_receive_msg(const char *msg)
 {
-	printf("received msg: %s\n", msg);
+	printf("==> %s\n", msg);
 }
 
 void irc_disconnect()
