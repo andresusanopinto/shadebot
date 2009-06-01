@@ -152,6 +152,9 @@ bot_control(['part', Channel]):-!,irc_send(['PART',Channel,':end of BODY LANGUAG
 bot_control(['invite', Nick, Channel]):-!,irc_send(['INVITE',Nick,Channel]).
 bot_control(['kick', Nick, Channel | []]):-!,irc_send(['KICK',Channel,Nick,':DARKO kicks your ass like no other']).
 bot_control(['kick', Nick, Channel | Msg]):-!,clean_msg(NMsg, Msg),append(['KICK',Channel,Nick], NMsg, Final),!,irc_send(Final).
+bot_control(['topic', Channel | Topic]):-!,clean_msg(NTopic, Topic),!,irc_send(['TOPIC',Channel|NTopic]).
+bot_control(['me' | Msg]):-!,clean_msg(NMsg, Msg),append([':\ACTION'|NMsg],['\'],Final),!,irc_send(Final).
+/*Request: PRIVMSG #booka_shade :\001ACTION wonders what's the real implementation of me\001*/
 /*bot_control(L):-write('Comando invalido: |'),write(L),write('|'),nl. */
 
 
