@@ -62,6 +62,13 @@ irc_notice(Dest, [H|T]):-
 	concat_atom([':',H],NH),
 	irc_send(['NOTICE', Dest, NH | T]).
 
+irc_mode(Channel,Mode,Nick):-
+	irc_send(['MODE',Channel,Mode,Nick]).
+
+irc_action(Dest, Msg):-
+	append(Msg,[''],NMsg),
+	irc_privmsg(Dest, ['ACTION' | NMsg] ).
+
 /* called each time we receive a msg */
 clean_msg([H|T], [NH|T]):-
 	!,concat_atom([':'|[NH]],H);NH=H.
@@ -89,41 +96,37 @@ irc_raw_receive(Msg):-
 	catch(Goal, E, (print_message(error,E),fail))
 	.
 
+response_context(_Prefix,Target,Target):-is_channel(Target).
+response_context(Prefix,_Target,Sender):-prefix(Prefix, Sender).
+
 /* funcao de leitura a nivel de linha */
 irc_receive( ['PING', Id] ):- irc_send(['PONG', Id]).
 
-irc_receive( [Prefix, 'PRIVMSG', _Channel | [Cmd | Params] ] ):-
+irc_receive( [Prefix, 'PRIVMSG', Channel | [Cmd | Params] ] ):-
+	response_context(Prefix,Channel,Out),
 	prefix(Prefix, Sender),
 	is_admin(Sender),
 	concat_atom([':!',Command],Cmd),
-	bot_control([Command | Params])
+	bot_control(Out,[Command | Params])
 	.
 
 irc_receive( [Prefix, 'PRIVMSG', Channel | Msg ] ):-
-	prefix(Prefix, Sender),
-	is_admin(Sender),
-	is_channel( Channel ),
+	response_context(Prefix,Channel,Out),
+	prefix(Prefix, Sender),is_admin(Sender),
 	clean_msg(Msg, CMsg),	
 	irc_admin_response(Pred, CMsg, Response),
-	Func =.. [Pred, Channel, Response],
+	Func =.. [Pred, Out, Response],
 	Func
 	.
 
-irc_receive( [_Prefix, 'PRIVMSG', Channel |  Msg ] ):-
-	is_channel( Channel ),!,
+irc_receive( [Prefix, 'PRIVMSG', Channel |  Msg ] ):-
+	response_context(Prefix,Channel,Out),
 	clean_msg(Msg, CMsg),	
 	irc_response(Pred, CMsg, Response),
-	Func =.. [Pred, Channel, Response],
+	Func =.. [Pred, Out, Response],
 	Func
 	.
 
-irc_receive( [Prefix, 'PRIVMSG', _Channel |  Msg ] ):-
-	prefix(Prefix, Sender),!,
-	clean_msg(Msg, CMsg),
-	irc_response(Pred, CMsg, Response),
-	Func =.. [Pred, Sender, Response],
-	Func
-	.
 
 /* ignores */
 irc_receive( [_Prefix, 'NOTICE', _Channel | _Msg ] ).
@@ -144,25 +147,41 @@ irc_receive(_):- write('Unknown message'),nl.
 is_admin('apinto').
 is_admin('jaguarandi').
 is_admin(Nick):-tmp_admin(Nick).
-bot_control(['quit']):-!,write('quitting'),nl,irc_send(['QUIT :I am seeing the WHITE ROOMS 8D']),irc_disconnect.
-bot_control(['nick', Nick]):-!,irc_nick(Nick).
-bot_control(['nick', Nick, Pass]):-!,nick_auth(Nick, Pass).
-bot_control(['join', Channel]):-!,irc_send(['JOIN',Channel]).
-bot_control(['join', Channel, Pass]):-!,irc_send(['JOIN',Channel,Pass]).
-bot_control(['part', Channel]):-!,irc_send(['PART',Channel,':end of BODY LANGUAGE here :P']).
-bot_control(['invite', Nick, Channel]):-!,irc_send(['INVITE',Nick,Channel]).
-bot_control(['kick', Nick, Channel | []]):-!,irc_send(['KICK',Channel,Nick,':DARKO kicks your ass like no other']).
-bot_control(['kick', Nick, Channel | Msg]):-!,clean_msg(NMsg, Msg),append(['KICK',Channel,Nick], NMsg, Final),!,irc_send(Final).
-bot_control(['topic', Channel | Topic]):-!,clean_msg(NTopic, Topic),!,irc_send(['TOPIC',Channel|NTopic]).
-bot_control(['me', Channel, | Msg]):-!,append([':\ACTION'|NMsg],['\'],Final),!,irc_send(['PRIVMSG', Channel | Final).
-bot_control(['op', Nick, Channel]):-!,irc_send(['MODE', Channel,'+o',Nick]).
-bot_control(['deop', Nick, Channel]):-!,irc_send(['MODE', Channel,'-o',Nick]).
-bot_control(['voice', Nick, Channel]):-!,irc_send(['MODE', Channel,'+v',Nick]).
-bot_control(['devoice', Nick, Channel]):-!,irc_send(['MODE', Channel,'-v',Nick]).
-bot_control(['msg', Dest | Msg]):-!,clean_msg(NMsg, Msg),irc_send(['PRIVMSG', Dest | NMsg]).
-bot_control(['notice', Dest | Msg]):-!,clean_msg(NMsg, Msg),irc_send(['NOTICE', Dest | NMsg]).
-bot_control(['admin', Nick]):-!,asserta( tmp_admin(Nick) ).
-bot_control(['ignore', Nick]):-!,retract( tmp_admin(Nick) ).
+
+bot_control(_Context, ['quit']):-					!,irc_send(['QUIT :I am seeing the WHITE ROOMS 8D']),irc_disconnect.
+
+bot_control(_Context, ['nick', Nick]):-				!,irc_nick(Nick).
+bot_control(_Context, ['nick', Nick, Pass]):-		!,nick_auth(Nick, Pass).
+bot_control(_Context, ['join', Channel]):-			!,irc_join(Channel).
+bot_control(_Context, ['join', Channel, Pass]):-	!,irc_send(['JOIN',Channel,Pass]).
+
+bot_control(_Context, ['part', Channel]):-			!,irc_send(['PART',Channel,':end of BODY LANGUAGE here :P']).
+bot_control( Context, ['part']):-					!,irc_send(['PART',Context,':end of BODY LANGUAGE here :P']).
+
+bot_control(_Context, ['invite', Nick, Channel]):-	!,irc_send(['INVITE',Nick,Channel]).
+bot_control( Context, ['invite', Nick]):-			!,irc_send(['INVITE',Nick,Context]).
+
+bot_control(_Context, ['kick', Nick, Channel]):-		!,irc_send(['KICK',Channel,Nick,':DARKO kicks your ass like no other']).
+bot_control(_Context, ['kick', Nick, Channel | Msg]):-!,clean_msg(NMsg, Msg),append(['KICK',Channel,Nick], NMsg, Final),!,irc_send(Final).
+
+bot_control(_Context, ['topic', Channel | Topic]):-	!,clean_msg(NTopic, Topic),!,irc_send(['TOPIC',Channel|NTopic]).
+
+bot_control( Context, ['me' | Msg]):-					irc_action(Context,Msg).
+
+bot_control( Context, ['op', Nick]):-					irc_mode(Context,'+o',Nick).
+bot_control(_Context, ['op', Nick, Channel]):-			irc_mode(Channel,'+o',Nick).
+bot_control( Context, ['deop', Nick]):-					irc_mode(Context,'-o',Nick).
+bot_control(_Context, ['deop', Nick, Channel]):-		irc_mode(Channel,'-o',Nick).
+bot_control( Context, ['voice', Nick]):-				irc_mode(Context,'+v',Nick).
+bot_control(_Context, ['voice', Nick, Channel]):-		irc_mode(Channel,'+v',Nick).
+bot_control( Context, ['devoice', Nick]):-				irc_mode(Context,'-v',Nick).
+bot_control(_Context, ['devoice', Nick, Channel]):-		irc_mode(Channel,'-v',Nick).
+
+bot_control(_Context, ['msg', Dest | Msg]):-			!,clean_msg(NMsg, Msg),irc_privmsg(Dest,NMsg).
+bot_control(_Context, ['notice', Dest | Msg]):-			!,clean_msg(NMsg, Msg),irc_notice(Dest, NMsg).
+bot_control(_Context, ['admin', Nick]):-				!,asserta( tmp_admin(Nick) ).
+bot_control(_Context, ['ignore', Nick]):-				!,retract( tmp_admin(Nick) ).
+
 /*Request: PRIVMSG #booka_shade :\001ACTION wonders what's the real implementation of me\001*/
 /*bot_control(L):-write('Comando invalido: |'),write(L),write('|'),nl. */
 
