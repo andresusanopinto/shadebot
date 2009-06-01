@@ -1,3 +1,10 @@
+:- dynamic db_is/2.
+:- dynamic db_has/2.
+:- dynamic is_admin/1.
+:- dynamic irc_receive/1.
+:- dynamic irc_response/3.
+:- dynamic irc_admin_response/3.
+
 /*
  * Debug stuff:
  */
@@ -9,6 +16,10 @@ irc_raw_send(S):-write('<== '),write(S),nl.
 /*
  * main and start
  */
+irc_start:-
+	irc_connect('uevora.PTnet.org'),
+	irc_auth,
+	irc_join('#p@p').
 irc_start:-
 	irc_connect('irc.freenode.net'),
 	irc_auth,
@@ -79,8 +90,18 @@ irc_receive( ['PING', Id] ):- irc_send(['PONG', Id]).
 irc_receive( [Prefix, 'PRIVMSG', _Channel | [Cmd | Params] ] ):-
 	prefix(Prefix, Sender),
 	is_admin(Sender),
-	concat_atom([':!',Command],Cmd),!,
+	concat_atom([':!',Command],Cmd),
 	bot_control([Command | Params])
+	.
+
+irc_receive( [Prefix, 'PRIVMSG', Channel | Msg ] ):-
+	prefix(Prefix, Sender),
+	is_admin(Sender),
+	is_channel( Channel ),
+	clean_msg(Msg, CMsg),	
+	irc_admin_response(Pred, CMsg, Response),
+	Func =.. [Pred, Channel, Response],
+	Func
 	.
 
 irc_receive( [_Prefix, 'PRIVMSG', Channel |  Msg ] ):-
@@ -103,6 +124,8 @@ irc_receive( [Prefix, 'PRIVMSG', _Channel |  Msg ] ):-
 irc_receive( [_Prefix, 'NOTICE', _Channel | _Msg ] ).
 irc_receive( [_Prefix, 'JOIN', _Channel | _Msg ] ).
 irc_receive( [_Prefix, 'MODE', _Channel | _Msg ] ).
+irc_receive( [_Prefix, 'PART', _Channel | _Msg ] ).
+irc_receive( [_Prefix, 'NICK', _Channel | _Msg ] ).
 irc_receive( [_Prefix, Number, _Channel | _Msg ] ):-
 	atom_to_term(Number, N, _),
 	number(N).
@@ -124,7 +147,7 @@ bot_control(['part', Channel]):-!,irc_send(['PART',Channel,':end of BODY LANGUAG
 bot_control(['invite', Nick, Channel]):-!,irc_send(['INVITE',Nick,Channel]).
 bot_control(['kick', Nick, Channel | []]):-!,irc_send(['KICK',Channel,Nick,':DARKO kicks your ass like no other']).
 bot_control(['kick', Nick, Channel | Msg]):-!,clean_msg(NMsg, Msg),append(['KICK',Channel,Nick], NMsg, Final),!,irc_send(Final).
-bot_control(L):-write('Comando invalido: |'),write(L),write('|'),nl.
+/*bot_control(L):-write('Comando invalido: |'),write(L),write('|'),nl. */
 
 
 /*
@@ -134,13 +157,18 @@ bot_control(L):-write('Comando invalido: |'),write(L),write('|'),nl.
 irc_response( irc_notice, ['VERSION'], ['VERSION Shadebot'] ).
 irc_response( irc_notice, ['PING', Id], ['PING', Id] ).
 
-/* whatis, is, has */
-:- dynamic db_is/2.
-:- dynamic db_has/2.
+
 irc_response( irc_privmsg, [Object1, 'is', Object2], ['I', 'learned','that',Object1,'is',Object2] ):- asserta( db_is(Object1,Object2) ).
 irc_response( irc_privmsg, [Object1, 'has', Object2], ['I', 'learned','that',Object1,'has',Object2] ):- asserta( db_has(Object1,Object2) ).
-irc_response( irc_privmsg, ['whatis', Id], [Id, 'is', What] ):- db_is(Id,What).
+irc_response( irc_privmsg, ['whatis', Id], [Id, 'is', What] ):- whatis(Id,What).
+/* whatis, is, has */
 
+whatis(Id, Target):-
+	db_is(Id, Target);db_is(Target,Id).
+
+
+irc_admin_response( irc_privmsg, ['!calc', Id], [X] ):-atom_to_term(Id, Term, _), X is Term.
+irc_admin_response( irc_privmsg, ['!run', Id], ['Done'] ):-atom_to_term(Id, Term, _), Term.
 
 /* DEBUG */
 /*
