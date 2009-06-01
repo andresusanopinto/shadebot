@@ -4,6 +4,7 @@
 :- dynamic irc_receive/1.
 :- dynamic irc_response/3.
 :- dynamic irc_admin_response/3.
+:- dynamic irc_send/1.
 
 /*
  * Debug stuff:
@@ -16,10 +17,12 @@ irc_raw_send(S):-write('<== '),write(S),nl.
 /*
  * main and start
  */
+/*
 irc_start:-
 	irc_connect('uevora.PTnet.org'),
 	irc_auth,
 	irc_join('#p@p').
+	*/
 irc_start:-
 	irc_connect('irc.freenode.net'),
 	irc_auth,
@@ -82,7 +85,9 @@ prefix(Prefix, Nick):-concat_atom( [':', Nick ], Prefix ).
 irc_raw_receive(Msg):-
 	write('==> '),write(Msg),nl,
 	concat_atom(List, ' ', Msg),
-	irc_receive(List).
+	Goal =.. [irc_receive, List],
+	catch(Goal, E, (print_message(error,E),fail))
+	.
 
 /* funcao de leitura a nivel de linha */
 irc_receive( ['PING', Id] ):- irc_send(['PONG', Id]).
