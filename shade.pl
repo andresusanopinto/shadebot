@@ -62,7 +62,7 @@ irc_notice(Dest, [H|T]):-
 	concat_atom([':',H],NH),
 	irc_send(['NOTICE', Dest, NH | T]).
 
-irc_mode(Channel,Mode,Nick):-
+irc_mode(Channel,Mode,Nick):- is_channel(Channel),
 	irc_send(['MODE',Channel,Mode,Nick]).
 
 irc_action(Dest, Msg):-
@@ -75,6 +75,7 @@ clean_msg([H|T], [NH|T]):-
 
 /* predicados auxiliares para determinar que tipo de identificador temos */
 is_channel(Name):-concat_atom(['#'|_], Name).
+is_channel(Name):-concat_atom(['&'|_], Name).
 is_user(Name):- not(is_channel(Name)).
 
 /* predicado para fazer parsing do Nick dado um determinado prefixo */
@@ -152,19 +153,22 @@ bot_control(_Context, ['quit']):-					!,irc_send(['QUIT :I am seeing the WHITE R
 
 bot_control(_Context, ['nick', Nick]):-				!,irc_nick(Nick).
 bot_control(_Context, ['nick', Nick, Pass]):-		!,nick_auth(Nick, Pass).
-bot_control(_Context, ['join', Channel]):-			!,irc_join(Channel).
-bot_control(_Context, ['join', Channel, Pass]):-	!,irc_send(['JOIN',Channel,Pass]).
+bot_control(_Context, ['join', Channel]):-			is_channel(Channel),!,irc_join(Channel).
+bot_control(_Context, ['join', Channel, Pass]):-	is_channel(Channel),!,irc_send(['JOIN',Channel,Pass]).
 
-bot_control(_Context, ['part', Channel]):-			!,irc_send(['PART',Channel,':end of BODY LANGUAGE here :P']).
-bot_control( Context, ['part']):-					!,irc_send(['PART',Context,':end of BODY LANGUAGE here :P']).
+bot_control(_Context, ['part', Channel]):-			is_channel(Channel),!,irc_send(['PART',Channel,':end of BODY LANGUAGE here :P']).
+bot_control( Context, ['part']):-					is_channel(Context),!,irc_send(['PART',Context,':end of BODY LANGUAGE here :P']).
 
-bot_control(_Context, ['invite', Nick, Channel]):-	!,irc_send(['INVITE',Nick,Channel]).
-bot_control( Context, ['invite', Nick]):-			!,irc_send(['INVITE',Nick,Context]).
+bot_control(_Context, ['invite', Nick, Channel]):-	is_channel(Channel),!,irc_send(['INVITE',Nick,Channel]).
+bot_control( Context, ['invite', Nick]):-			is_channel(Context),!,irc_send(['INVITE',Nick,Context]).
 
-bot_control(_Context, ['kick', Nick, Channel]):-		!,irc_send(['KICK',Channel,Nick,':DARKO kicks your ass like no other']).
-bot_control(_Context, ['kick', Nick, Channel | Msg]):-!,clean_msg(NMsg, Msg),append(['KICK',Channel,Nick], NMsg, Final),!,irc_send(Final).
+bot_control(_Context, ['kick', Nick, Channel]):-		is_channel(Channel),!,irc_send(['KICK',Channel,Nick,':DARKO kicks your ass like no other']).
+bot_control(_Context, ['kick', Nick, Channel | Msg]):-	is_channel(Channel),!,clean_msg(NMsg, Msg),append(['KICK',Channel,Nick], NMsg, Final),!,irc_send(Final).
+bot_control( Context, ['kick', Nick]):-					is_channel(Context),!,irc_send(['KICK',Context,Nick,':DARKO kicks your ass like no other']).
+bot_control( Context, ['kick', Nick | Msg]):-			is_channel(Context),!,clean_msg(NMsg, Msg),append(['KICK',Context,Nick], NMsg, Final),!,irc_send(Final).
 
-bot_control(_Context, ['topic', Channel | Topic]):-	!,clean_msg(NTopic, Topic),!,irc_send(['TOPIC',Channel|NTopic]).
+bot_control(_Context, ['topic', Channel | Topic]):-		is_channel(Channel),!,clean_msg(NTopic, Topic),!,irc_send(['TOPIC',Channel|NTopic]).
+bot_control( Context, ['topic' | Topic]):-				is_channel(Context),!,clean_msg(NTopic, Topic),!,irc_send(['TOPIC',Context|NTopic]).
 
 bot_control( Context, ['me' | Msg]):-					irc_action(Context,Msg).
 
