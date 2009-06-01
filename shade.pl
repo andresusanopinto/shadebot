@@ -43,9 +43,10 @@ irc_join(Channel):-irc_send(['JOIN', Channel]).
 irc_privmsg(Dest, [H|T]):-
 	concat_atom([':',H],NH),
 	irc_send(['PRIVMSG', Dest, NH | T]).
-	
-irc_privmsg(Dest, []):-
-	irc_send(['PRIVMSG', Dest, ':']).
+
+irc_notice(Dest, [H|T]):-
+	concat_atom([':',H],NH),
+	irc_send(['NOTICE', Dest, NH | T]).
 
 /* called each time we receive a msg */
 clean_msg([H|T], [NH|T]):-
@@ -83,23 +84,29 @@ irc_receive( [Prefix, 'PRIVMSG', _Channel | [Cmd | Params] ] ):-
 	.
 
 irc_receive( [_Prefix, 'PRIVMSG', Channel |  Msg ] ):-
-	write('Msg: '), write(Msg),nl,
 	is_channel( Channel ),!,
 	clean_msg(Msg, CMsg),	
-	write('CMsg: '), write(CMsg),nl,
-	irc_response(CMsg, Response),
-	write('Resposta Canal'),write(Response),nl,
-	irc_privmsg(Channel, Response)
+	irc_response(Pred, CMsg, Response),
+	Func =.. [Pred, Channel, Response],
+	Func
 	.
 
 irc_receive( [Prefix, 'PRIVMSG', _Channel |  Msg ] ):-
-	prefix(Prefix, Sender),
+	prefix(Prefix, Sender),!,
 	clean_msg(Msg, CMsg),
-	write('CMsg: '), write(CMsg),nl,
-	irc_response(CMsg, Response),
-	write('Resposta Privada'),write(Response),nl,
-	irc_privmsg(Sender, Response)
+	irc_response(Pred, CMsg, Response),
+	Func =.. [Pred, Sender, Response],
+	Func
 	.
+
+/* ignores */
+irc_receive( [_Prefix, 'NOTICE', _Channel | _Msg ] ).
+irc_receive( [_Prefix, 'JOIN', _Channel | _Msg ] ).
+irc_receive( [_Prefix, 'MODE', _Channel | _Msg ] ).
+irc_receive( [_Prefix, Number, _Channel | _Msg ] ):-
+	atom_to_term(Number, N, _),
+	number(N).
+/*	write('Numeric reply:'),write( [Prefix, Number, Channel | Msg ] ). */
 
 irc_receive(_):- write('Unknown message'),nl.
 
@@ -123,22 +130,24 @@ bot_control(L):-write('Comando invalido: |'),write(L),write('|'),nl.
 /*
  * Defines responses to given inputs
  */
-irc_response( ['VERSION'], ['Shadebot'] ).
-irc_response( ['PING', Id], ['PONG', Id] ).
+/* CTCP replies */
+irc_response( irc_notice, ['VERSION'], ['VERSION Shadebot'] ).
+irc_response( irc_notice, ['PING', Id], ['PING', Id] ).
 
 /* whatis, is, has */
 :- dynamic db_is/2.
 :- dynamic db_has/2.
-irc_response( [Object1, 'is', Object2], ['I', 'learned','that',Object1,'is',Object2] ):- asserta( db_is(Object1,Object2) ).
-irc_response( [Object1, 'has', Object2], ['I', 'learned','that',Object1,'has',Object2] ):- asserta( db_has(Object1,Object2) ).
-irc_response( ['whatis', Id], [Id, 'is', What] ):- db_is(Id,What).
+irc_response( irc_privmsg, [Object1, 'is', Object2], ['I', 'learned','that',Object1,'is',Object2] ):- asserta( db_is(Object1,Object2) ).
+irc_response( irc_privmsg, [Object1, 'has', Object2], ['I', 'learned','that',Object1,'has',Object2] ):- asserta( db_has(Object1,Object2) ).
+irc_response( irc_privmsg, ['whatis', Id], [Id, 'is', What] ):- db_is(Id,What).
 
 
 /* DEBUG */
 /*
 irc_response( Msg, ['ignored:' | Msg]).
 :-irc_raw_receive( 'PING lala').
-:-irc_raw_receive( ':andre PRIVMSG booka andre is alala').
-:-irc_raw_receive( ':andre PRIVMSG booka apinto is LAlala').
-:-irc_raw_receive( ':andre PRIVMSG booka whatis andre').
- */
+:-irc_raw_receive( ':andre PRIVMSG booka :andre is alala').
+:-irc_raw_receive( ':andre PRIVMSG booka :apinto is LAlala').
+:-irc_raw_receive( ':andre PRIVMSG booka :whatis andre').
+:-irc_raw_receive( ':freenode-connect!freenode@freenode/bot/connect PRIVMSG shade_bot :VERSION').
+*/
