@@ -1,6 +1,7 @@
 :- dynamic db_is/2.
 :- dynamic db_has/2.
 :- dynamic is_admin/1.
+:- dynamic is_away/0.
 :- dynamic irc_receive/1.
 :- dynamic irc_response/3.
 :- dynamic irc_admin_response/3.
@@ -68,6 +69,13 @@ irc_mode(Channel,Mode,Nick):- is_channel(Channel),
 irc_action(Dest, Msg):-
 	append(Msg,[''],NMsg),
 	irc_privmsg(Dest, ['ACTION' | NMsg] ).
+	
+irc_back:-
+	irc_send(['AWAY']).
+
+irc_away(Msg):-
+	write('here'),nl,
+	irc_send(['AWAY :' | Msg]).
 
 /* called each time we receive a msg */
 clean_msg([H|T], [NH|T]):-
@@ -111,6 +119,8 @@ irc_receive( [Prefix, 'PRIVMSG', Channel | [Cmd | Params] ] ):-
 	bot_control(Out,[Command | Params])
 	.
 
+irc_receive( [_Prefix, 'PRIVMSG' | _] ):-is_away.
+
 irc_receive( [Prefix, 'PRIVMSG', Channel | Msg ] ):-
 	response_context(Prefix,Channel,Out),
 	prefix(Prefix, Sender),is_admin(Sender),
@@ -131,6 +141,7 @@ irc_receive( [Prefix, 'PRIVMSG', Channel |  Msg ] ):-
 
 /* ignores */
 irc_receive( [_Prefix, 'NOTICE', _Channel | _Msg ] ).
+irc_receive( ['NOTICE' | _Msg ] ).
 irc_receive( [_Prefix, 'JOIN', _Channel | _Msg ] ).
 irc_receive( [_Prefix, 'MODE', _Channel | _Msg ] ).
 irc_receive( [_Prefix, 'PART', _Channel | _Msg ] ).
@@ -148,6 +159,11 @@ irc_receive(_):- write('Unknown message'),nl.
 is_admin('apinto').
 is_admin('jaguarandi').
 is_admin(Nick):-tmp_admin(Nick).
+bot_control(_Context, ['back']):-					!,is_away,irc_back,retract(is_away).
+bot_control(_Context, _Args):-						is_away.
+
+bot_control(_Context, ['away']):-					!,irc_away(['this bot is with CHARLOTTE now']),assert(is_away).
+bot_control(_Context, ['away' | Msg]):-				!,irc_away(Msg),assert(is_away).
 
 bot_control(_Context, ['quit']):-					!,irc_send(['QUIT :I am seeing the WHITE ROOMS 8D']),irc_disconnect.
 
@@ -185,6 +201,7 @@ bot_control(_Context, ['msg', Dest | Msg]):-			!,clean_msg(NMsg, Msg),irc_privms
 bot_control(_Context, ['notice', Dest | Msg]):-			!,clean_msg(NMsg, Msg),irc_notice(Dest, NMsg).
 bot_control(_Context, ['admin', Nick]):-				!,asserta( tmp_admin(Nick) ).
 bot_control(_Context, ['ignore', Nick]):-				!,retract( tmp_admin(Nick) ).
+
 
 /*Request: PRIVMSG #booka_shade :\001ACTION wonders what's the real implementation of me\001*/
 /*bot_control(L):-write('Comando invalido: |'),write(L),write('|'),nl. */
