@@ -1,3 +1,4 @@
+:-use_module(library(lists)).
 :- dynamic db_is/2.
 :- dynamic db_has/2.
 :- dynamic is_admin/1.
@@ -186,8 +187,6 @@ bot_control( Context, ['kick', Nick | Msg]):-			is_channel(Context),!,clean_msg(
 bot_control(_Context, ['topic', Channel | Topic]):-		is_channel(Channel),!,clean_msg(NTopic, Topic),!,irc_send(['TOPIC',Channel|NTopic]).
 bot_control( Context, ['topic' | Topic]):-				is_channel(Context),!,clean_msg(NTopic, Topic),!,irc_send(['TOPIC',Context|NTopic]).
 
-bot_control( Context, ['me' | Msg]):-					irc_action(Context,Msg).
-
 bot_control( Context, ['op', Nick]):-					irc_mode(Context,'+o',Nick).
 bot_control(_Context, ['op', Nick, Channel]):-			irc_mode(Channel,'+o',Nick).
 bot_control( Context, ['deop', Nick]):-					irc_mode(Context,'-o',Nick).
@@ -198,9 +197,32 @@ bot_control( Context, ['devoice', Nick]):-				irc_mode(Context,'-v',Nick).
 bot_control(_Context, ['devoice', Nick, Channel]):-		irc_mode(Channel,'-v',Nick).
 
 bot_control(_Context, ['msg', Dest | Msg]):-			!,clean_msg(NMsg, Msg),irc_privmsg(Dest,NMsg).
+bot_control( Context, ['me' | Msg]):-					irc_action(Context,Msg).
 bot_control(_Context, ['notice', Dest | Msg]):-			!,clean_msg(NMsg, Msg),irc_notice(Dest, NMsg).
 bot_control(_Context, ['admin', Nick]):-				!,asserta( tmp_admin(Nick) ).
 bot_control(_Context, ['ignore', Nick]):-				!,retract( tmp_admin(Nick) ).
+
+bot_control(Context, ['help']):-						!,usage(Msg),findall(_, (member(X, Msg),irc_privmsg(Context,X)),_).
+
+usage(
+[['Usage: !<msg>'],
+['<msg> = <command> [<params>'],
+[' '],
+['Bot Commands for bot admins:'],
+['quit                                     - bot quits irc'],
+['nick <nick> [<pass>]                     - change bot nickname'],
+['join <channel> [<pass>]                  - bot joins channel'],
+['part [<channel>]                         - bot leaves channel (default - current channel)'],
+['invite <nick> [<channel>]                - bot invites nick to channel (default - current channel)'],
+['kick <nick> [<channel> <Msg>]            - bot kicks nick from channel with customizable message (default - current channel)'],
+['topic [<channel>] <topic>                - bot changes channel topic (default - current channel)'],
+['op/deop/voice/devoice <nick> [<channel>] - bot gives or takes respective access level from channel (default - current channel)'],
+['msg <dest> <msg>                         - bot writes msg as private message to dest'],
+['me <msg>                                 - bot writes msg as action me to current channel'],
+['notice <dest> <msg>                      - bot writes notice to dest'],
+['admin <nick>                             - gives temporary bot admin access to nick'],
+['ignore <nick>                            - removes temporary bot admin access of nick']]
+).
 
 
 /*Request: PRIVMSG #booka_shade :\001ACTION wonders what's the real implementation of me\001*/
