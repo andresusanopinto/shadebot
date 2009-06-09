@@ -1,0 +1,53 @@
+
+
+digraph lala
+{
+	main [fillcolor="#f00000"];
+	PL_initialize [fillcolor="#f00000"];
+	main -> PL_initialize;
+
+	irc_raw_send [fillcolor="#f00000"];
+	irc_start [fillcolor="#00f000"];
+	irc_read_msg [fillcolor="#f00000"];
+	irc_connect [fillcolor="#f00000"];
+	main irc_connect irc_read_msg irc_raw_send;
+
+	node [fillcolor="#f00000"];
+	irc_connect -> socket;
+	irc_connect -> connect;
+
+	node [fillcolor="#00f000"];
+
+
+	main -> irc_start;
+			irc_start -> irc_connect;
+			irc_start -> irc_auth;
+
+	main -> irc_read_msg -> irc_raw_receive -> irc_receive;
+
+
+	bot_control [width=1.3] [label="{ bot_control | Implementa os comandos:\n!away, !topic, !nick, !join, ...}"];
+	irc_response [width=1.3] [label="{ irc_response | Implementa comandos\nsobre base de conhecimento}"];
+	irc_admin_response [width=1.3] [label="{ irc_admin_response | Implementa os comandos:\n!run, !calc}"];
+	irc_receive -> bot_control			-> tmp;
+	irc_receive -> irc_admin_response	-> tmp;
+	irc_receive -> irc_response			-> tmp;
+	
+
+	irc_send -> irc_raw_send;
+	
+	tmp[label="..."];
+	tmp -> irc_privmsg	-> irc_send;
+	tmp -> irc_notice	-> irc_send;
+	tmp -> irc_join		-> irc_send;
+	tmp -> irc_away		-> irc_send;
+	tmp -> irc_action	-> irc_send;
+	tmp -> irc_mode		-> irc_send;
+
+	subgraph cluster
+	{
+		C [fillcolor="#f00000",shape=box];
+		prolog [fillcolor="#00f000",shape=box];
+	}
+
+}
