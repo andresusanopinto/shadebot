@@ -2,21 +2,21 @@
 
 digraph lala
 {
-	main [fillcolor="#f00000"];
-	PL_initialize [fillcolor="#f00000"];
+	main [fillcolor="#eccccc"];
+	PL_initialize [fillcolor="#eccccc"];
 	main -> PL_initialize;
 
-	irc_raw_send [fillcolor="#f00000"];
-	irc_start [fillcolor="#00f000"];
-	irc_read_msg [fillcolor="#f00000"];
-	irc_connect [fillcolor="#f00000"];
+	irc_raw_send [fillcolor="#eccccc"];
+	irc_start [fillcolor="#cceccc"];
+	irc_read_msg [fillcolor="#eccccc"];
+	irc_connect [fillcolor="#eccccc"];
 	main irc_connect irc_read_msg irc_raw_send;
 
-	node [fillcolor="#f00000"];
+	node [fillcolor="#eccccc"];
 	irc_connect -> socket;
 	irc_connect -> connect;
 
-	node [fillcolor="#00f000"];
+	node [fillcolor="#cceccc"];
 
 
 	main -> irc_start;
@@ -46,8 +46,8 @@ digraph lala
 
 	subgraph cluster
 	{
-		C [fillcolor="#f00000",shape=box];
-		prolog [fillcolor="#00f000",shape=box];
+		C [fillcolor="#eccccc",shape=box];
+		prolog [fillcolor="#cceccc",shape=box];
 	}
 
 }
